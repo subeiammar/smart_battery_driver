@@ -119,6 +119,7 @@ namespace SBS
 
     private:
       int readWord(SBSCommand command) const;
+      int i2cReadWord(int file, int command);
 
     private:
       int address_;

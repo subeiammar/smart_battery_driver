@@ -17,15 +17,36 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <unistd.h>
 
 extern "C" {
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/types.h>
+#include <sys/ioctl.h>
 #include <i2c/smbus.h>
 }
 
 #include "sbs.hpp"
+
+#define I2C_SMBUS 0x0720
+#define I2C_SMBUS_BLOCK_MAX 32
+#define I2C_SMBUS_READ 1
+#define I2C_SMBUS_WRITE 0
+
+union i2c_smbus_data {
+  __u8 byte;
+  __u16 word;
+  __u8 block[I2C_SMBUS_BLOCK_MAX + 2];
+};
+
+struct i2c_smbus_ioctl_data {
+  __u8 read_write;
+  __u8 command;
+  __u32 size;
+  union i2c_smbus_data *data;
+};
 
 namespace SBS
 {
@@ -144,5 +165,24 @@ namespace SBS
     }
 
     return res;
+  }
+
+  int SmartBattery::i2cReadWord(int file, int command)
+  {
+    struct i2c_smbus_ioctl_data args;
+    union i2c_smbus_data data;
+    __s32 access_result;
+
+    args.read_write = I2C_SMBUS_READ;
+    args.command = command;
+    args.size = I2C_SMBUS_WORD_DATA;
+    args.data = &data;
+    access_result = ioctl(file, I2C_SMBUS, &args);
+
+    if (access_result) {
+      return -1;
+    } else {
+      return 0x0FFFF & data.word;
+    }
   }
 }  // namespace SBS
